@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiet Classroom Emoji</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .emoji {
+            font-size: 100px; /* Default size */
+            transition: font-size 1s ease-in-out;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .control-item {
+            margin: 10px;
+        }
+        #visualizer {
+            width: 100%;
+            height: 50px;
+            background: #f0f0f0;
+            position: relative;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .bar {
+            width: 4px;
+            height: 100%;
+            background: #007bff;
+            position: absolute;
+            bottom: 0;
+        }
+        #score {
+            font-size: 24px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="emoji" class="emoji">😓</div>
+    <div id="score">Score: 0</div>
+    <div class="controls">
+        <div class="control-item">
+            <label for="threshold">Volume Threshold: </label>
+            <input type="range" id="threshold" min="1" max="100" value="30">
+            <span id="threshold-value">30</span>
+        </div>
+        <div class="control-item">
+            <label for="bg-color">Background Color: </label>
+            <input type="color" id="bg-color" value="#ffffff">
+        </div>
+    </div>
+
+    <div id="visualizer"></div>
+
+    <script>
+        const emoji = document.getElementById('emoji');
+        const scoreDisplay = document.getElementById('score');
+        const thresholdSlider = document.getElementById('threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+        const bgColorPicker = document.getElementById('bg-color');
+        const visualizer = document.getElementById('visualizer');
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let score = 0;
+
+        // Update threshold value display
+        thresholdSlider.addEventListener('input', () => {
+            thresholdValue.textContent = thresholdSlider.value;
+        });
+
+        // Update background color
+        bgColorPicker.addEventListener('input', () => {
+            document.body.style.backgroundColor = bgColorPicker.value;
+        });
+
+        // Initialize microphone and audio analysis
+        async function initializeAudio() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            source.connect(analyser);
+            createVisualizerBars();
+            analyzeAudio();
+        }
+
+        // Create bars for the visualizer
+        function createVisualizerBars() {
+            for (let i = 0; i < analyser.frequencyBinCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.left = `${(i / analyser.frequencyBinCount) * 100}%`;
+                visualizer.appendChild(bar);
+            }
+        }
+
+        // Analyze audio levels
+        function analyzeAudio() {
+            analyser.getByteFrequencyData(dataArray);
+            const avgVolume = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+            const threshold = parseInt(thresholdSlider.value, 10);
+
+            // Update visualizer bars
+            const bars = document.getElementsByClassName('bar');
+            for (let i = 0; i < bars.length; i++) {
+                bars[i].style.height = `${100 - dataArray[i]}%`; // Invert height based on quietness
+            }
+
+            // Update score
+            if (avgVolume < threshold) {
+                score += 1; // Increment score for every quiet second
+            } else {
+                score = Math.max(0, Math.floor(score * 0.99)); // Decrease score by 10% if loud
+            }
+
+            scoreDisplay.textContent = `Score: ${score}`;
+
+            // Adjust emoji based on score range
+            if (score < 1000) {
+                emoji.textContent = '😓';
+            } else if (score < 3000) {
+                emoji.textContent = '🙂';
+            } else if (score < 4000) {
+                emoji.textContent = '☺️';
+            } else {
+                emoji.textContent = '🥳';
+            }
+
+            // Adjust emoji size based on score
+            const minSize = 100; // Minimum emoji size in pixels
+            const maxSize = 400; // Maximum emoji size in pixels
+            const newSize = minSize + (score * 0.1); // Scale emoji size with score
+            emoji.style.fontSize = `${Math.min(newSize, maxSize)}px`; // Cap size to maxSize
+
+            requestAnimationFrame(analyzeAudio);
+        }
+
+        // Start audio processing
+        initializeAudio().catch(err => console.error('Microphone access denied:', err));
+    </script>
+</body>
+</html>
