@@ -129,10 +129,16 @@
             // Adjust emoji based on score range
             if (score < 1000) {
                 emoji.textContent = '😓';
-            } else if (score < 3000) {
+            } else if (score < 1600) {
                 emoji.textContent = '🙂';
-            } else if (score < 4000) {
+            } else if (score < 2400) {
                 emoji.textContent = '☺️';
+             } else if (score < 3000) {
+                emoji.textContent = '🥹';
+              } else if (score < 4000) {
+                emoji.textContent = '😆';
+              } else if (score < 5000) {
+                emoji.textContent = '🤩';
             } else {
                 emoji.textContent = '🥳';
             }
